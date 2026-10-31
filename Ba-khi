@@ -1,0 +1,376 @@
+--// DUYVN HUB
+--// HOP SERVER 1 NGƯỜI + EXTREME LOW GRAPHICS
+--// HÌNH TRÒN DV DI CHUYỂN ĐƯỢC
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local UIS = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+local Player = Players.LocalPlayer
+local PlaceId = game.PlaceId
+
+pcall(function()
+    local old = CoreGui:FindFirstChild("DuyVn_HUB")
+    if old then old:Destroy() end
+end)
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "DuyVn_HUB"
+Gui.ResetOnSpawn = false
+Gui.Parent = CoreGui
+
+-- HÌNH TRÒN DV
+local Toggle = Instance.new("TextButton")
+Toggle.Size = UDim2.fromOffset(58,58)
+Toggle.Position = UDim2.new(0,12,0.5,-29)
+Toggle.BackgroundColor3 = Color3.fromRGB(255,70,170)
+Toggle.Text = "DV"
+Toggle.TextColor3 = Color3.new(1,1,1)
+Toggle.TextSize = 20
+Toggle.Font = Enum.Font.GothamBold
+Toggle.AutoButtonColor = true
+Toggle.Parent = Gui
+
+local Round = Instance.new("UICorner",Toggle)
+Round.CornerRadius = UDim.new(1,0)
+
+local Border = Instance.new("UIStroke",Toggle)
+Border.Thickness = 2
+Border.Color = Color3.fromRGB(255,190,230)
+
+-- MENU
+local Main = Instance.new("Frame")
+Main.Size = UDim2.fromOffset(300,220)
+Main.Position = UDim2.new(0.5,-150,0.5,-110)
+Main.BackgroundColor3 = Color3.fromRGB(255,70,170)
+Main.Parent = Gui
+
+local MC = Instance.new("UICorner",Main)
+MC.CornerRadius = UDim.new(0,14)
+
+local Stroke = Instance.new("UIStroke",Main)
+Stroke.Thickness = 2
+Stroke.Color = Color3.fromRGB(255,190,230)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,0,0,45)
+Title.BackgroundTransparency = 1
+Title.Text = "🎀 DuyVn HUB"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextSize = 23
+Title.Font = Enum.Font.GothamBold
+Title.Parent = Main
+
+local Status = Instance.new("TextLabel")
+Status.Position = UDim2.new(0,10,1,-28)
+Status.Size = UDim2.new(1,-20,0,22)
+Status.BackgroundTransparency = 1
+Status.Text = "Sẵn sàng"
+Status.TextColor3 = Color3.new(1,1,1)
+Status.TextSize = 13
+Status.Font = Enum.Font.Gotham
+Status.Parent = Main
+
+local function MakeButton(text,y)
+    local B = Instance.new("TextButton")
+    B.Size = UDim2.new(1,-30,0,52)
+    B.Position = UDim2.new(0,15,0,y)
+    B.BackgroundColor3 = Color3.fromRGB(220,35,140)
+    B.Text = text
+    B.TextColor3 = Color3.new(1,1,1)
+    B.TextSize = 16
+    B.Font = Enum.Font.GothamBold
+    B.Parent = Main
+
+    local C = Instance.new("UICorner",B)
+    C.CornerRadius = UDim.new(0,10)
+
+    return B
+end
+
+local Hop = MakeButton("👤 HOP SERVER 1 NGƯỜI",55)
+local Gfx = MakeButton("⛏️ GRAPHICS CỰC THẤP: OFF",115)
+
+-- DI CHUYỂN HÌNH TRÒN DV BẰNG NGÓN TAY
+local circleDragging = false
+local circleDragStart
+local circleStartPos
+
+Toggle.InputBegan:Connect(function(input)
+
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        circleDragging = true
+        circleDragStart = input.Position
+        circleStartPos = Toggle.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+
+    if not circleDragging then
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseMovement then
+
+        local delta = input.Position - circleDragStart
+
+        Toggle.Position = UDim2.new(
+            circleStartPos.X.Scale,
+            circleStartPos.X.Offset + delta.X,
+            circleStartPos.Y.Scale,
+            circleStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+
+    if input.UserInputType == Enum.UserInputType.Touch
+    or input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+        circleDragging = false
+    end
+end)
+
+-- TAP HÌNH TRÒN ĐỂ ẨN / HIỆN MENU
+local lastTap = 0
+
+Toggle.Activated:Connect(function()
+
+    -- tránh tap sau khi kéo
+    if os.clock() - lastTap < 0.15 then
+        return
+    end
+
+    lastTap = os.clock()
+
+    Main.Visible = not Main.Visible
+end)
+
+-- HOP SERVER ĐÚNG 1 NGƯỜI
+Hop.MouseButton1Click:Connect(function()
+
+    Status.Text = "🔎 Đang tìm server 1 người..."
+
+    task.spawn(function()
+
+        local cursor = ""
+        local found = {}
+
+        for page = 1,5 do
+
+            local url =
+                "https://games.roblox.com/v1/games/"
+                .. PlaceId
+                .. "/servers/Public?sortOrder=Asc&limit=100"
+
+            if cursor ~= "" then
+                url = url .. "&cursor=" .. HttpService:UrlEncode(cursor)
+            end
+
+            local ok,data = pcall(function()
+                return game:HttpGet(url)
+            end)
+
+            if not ok then
+                Status.Text = "❌ Không lấy được server"
+                return
+            end
+
+            local ok2,result = pcall(function()
+                return HttpService:JSONDecode(data)
+            end)
+
+            if not ok2 or not result then
+                Status.Text = "❌ Lỗi dữ liệu server"
+                return
+            end
+
+            for _,server in ipairs(result.data or {}) do
+
+                if server.id ~= game.JobId
+                and server.playing == 1
+                and server.playing < server.maxPlayers then
+
+                    table.insert(found,server)
+                end
+            end
+
+            if #found > 0 then
+                break
+            end
+
+            cursor = result.nextPageCursor or ""
+
+            if cursor == "" then
+                break
+            end
+        end
+
+        if #found == 0 then
+            Status.Text = "⚠️ Không có server đúng 1 người"
+            return
+        end
+
+        local target = found[math.random(1,#found)]
+
+        Status.Text = "🚀 Đang hop server 1 người..."
+
+        task.wait(0.5)
+
+        pcall(function()
+            TeleportService:TeleportToPlaceInstance(
+                PlaceId,
+                target.id,
+                Player
+            )
+        end)
+    end)
+end)
+
+-- EXTREME LOW GRAPHICS
+local graphicsOn = false
+
+local function ExtremeGraphics()
+
+    pcall(function()
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 0
+        Lighting.FogEnd = 1000000
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+        Lighting.Technology = Enum.Technology.Compatibility
+    end)
+
+    for _,v in ipairs(Lighting:GetDescendants()) do
+        pcall(function()
+
+            if v:IsA("PostEffect")
+            or v:IsA("Atmosphere")
+            or v:IsA("Clouds") then
+
+                v.Enabled = false
+            end
+        end)
+    end
+
+    for _,v in ipairs(Workspace:GetDescendants()) do
+        pcall(function()
+
+            if v:IsA("ParticleEmitter")
+            or v:IsA("Trail")
+            or v:IsA("Beam")
+            or v:IsA("Smoke")
+            or v:IsA("Fire")
+            or v:IsA("Sparkles") then
+
+                v.Enabled = false
+            end
+
+            if v:IsA("BasePart") then
+                v.CastShadow = false
+                v.Reflectance = 0
+                v.Material = Enum.Material.Plastic
+            end
+
+            if v:IsA("Decal")
+            or v:IsA("Texture") then
+
+                v.Transparency = 1
+            end
+
+            if v:IsA("SurfaceAppearance") then
+                v:Destroy()
+            end
+
+            if v:IsA("MeshPart") then
+                v.RenderFidelity = Enum.RenderFidelity.Performance
+            end
+        end)
+    end
+
+    pcall(function()
+        local Terrain = Workspace:FindFirstChildOfClass("Terrain")
+
+        if Terrain then
+            Terrain.Decoration = false
+            Terrain.WaterWaveSize = 0
+            Terrain.WaterWaveSpeed = 0
+            Terrain.WaterReflectance = 0
+            Terrain.WaterTransparency = 1
+        end
+    end)
+
+    pcall(function()
+        settings().Rendering.QualityLevel =
+            Enum.QualityLevel.Level01
+    end)
+
+    pcall(function()
+        settings().Rendering.MeshPartDetailLevel =
+            Enum.MeshPartDetailLevel.Level01
+    end)
+end
+
+Gfx.MouseButton1Click:Connect(function()
+
+    graphicsOn = not graphicsOn
+
+    if graphicsOn then
+
+        ExtremeGraphics()
+
+        Gfx.Text = "⛏️ GRAPHICS CỰC THẤP: ON"
+        Status.Text = "⚡ Đã giảm đồ họa cực mạnh"
+
+    else
+
+        Gfx.Text = "⛏️ GRAPHICS CỰC THẤP: OFF"
+        Status.Text = "Graphics cực thấp đang tắt"
+    end
+end)
+
+-- GIỮ GRAPHICS THẤP CHO OBJECT MỚI
+Workspace.DescendantAdded:Connect(function(v)
+
+    if not graphicsOn then
+        return
+    end
+
+    task.defer(function()
+
+        pcall(function()
+
+            if v:IsA("ParticleEmitter")
+            or v:IsA("Trail")
+            or v:IsA("Beam")
+            or v:IsA("Smoke")
+            or v:IsA("Fire")
+            or v:IsA("Sparkles") then
+
+                v.Enabled = false
+
+            elseif v:IsA("BasePart") then
+
+                v.CastShadow = false
+                v.Reflectance = 0
+                v.Material = Enum.Material.Plastic
+
+            elseif v:IsA("Decal")
+            or v:IsA("Texture") then
+
+                v.Transparency = 1
+            end
+        end)
+    end)
+end)
+
+Status.Text = "✅ DuyVn HUB sẵn sàng"
